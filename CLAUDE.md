@@ -85,8 +85,9 @@ capability methods its API supports. **The method set is the capability matrix**
 - **`Config`/`Quirks` are passed by value on purpose**; `hugeParam`/`rangeValCopy` are
   disabled in `.golangci.yml`. Optional numeric request fields are pointers — use Go 1.27's
   `new(0.5)` rather than a helper.
-- **Nested module tagging**: tag root `vX.Y.Z` first, then set `vertexgrpc/go.mod` to require
-  it (drop the local `replace`), then tag `vertexgrpc/vX.Y.Z`. `go.work` is for local dev.
+- **Nested module tagging**: tag root `vX.Y.Z` first, bump the `require github.com/richardwooding/llmkit`
+  line in `vertexgrpc/go.mod` to it, then tag `vertexgrpc/vX.Y.Z`. Never add a `replace`; the
+  committed `go.work` already makes local development use the sibling root module.
 
 ## Conventions
 

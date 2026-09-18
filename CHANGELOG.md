@@ -6,6 +6,16 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-18
+
+### Added
+
+- `Reranker` interface, implemented by Cohere (`/rerank`) and VoyageAI (`/rerank`).
+- `MultimodalEmbedder` interface, implemented by VoyageAI (`/multimodalembeddings`) for
+  text, image and video inputs.
+- `cmd/llmkit` CLI with `chat`, `embed` and `resolve` commands.
+- GitHub Pages site at https://richardwooding.github.io/llmkit/.
+
 ## [0.1.0] - 2026-09-18
 
 ### Added

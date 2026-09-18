@@ -9,6 +9,10 @@ type (
 	Streamer = core.Streamer
 	// Embedder is an alias of core.Embedder.
 	Embedder = core.Embedder
+	// Reranker is an alias of core.Reranker.
+	Reranker = core.Reranker
+	// MultimodalEmbedder is an alias of core.MultimodalEmbedder.
+	MultimodalEmbedder = core.MultimodalEmbedder
 	// Client is an alias of core.Client.
 	Client = core.Client
 	// Provider is an alias of core.Provider.
@@ -69,6 +73,14 @@ type (
 	EmbedResponse = core.EmbedResponse
 	// EmbedInputType is an alias of core.EmbedInputType.
 	EmbedInputType = core.EmbedInputType
+	// RerankRequest is an alias of core.RerankRequest.
+	RerankRequest = core.RerankRequest
+	// RerankResult is an alias of core.RerankResult.
+	RerankResult = core.RerankResult
+	// RerankResponse is an alias of core.RerankResponse.
+	RerankResponse = core.RerankResponse
+	// MultimodalEmbedRequest is an alias of core.MultimodalEmbedRequest.
+	MultimodalEmbedRequest = core.MultimodalEmbedRequest
 	// Config is an alias of core.Config.
 	Config = core.Config
 	// Option is an alias of core.Option.

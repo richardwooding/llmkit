@@ -40,10 +40,15 @@ anthropic/ cohere/ ollama/ vertex/ voyage/      native wire formats
 (root)           alias.go re-exports core as llmkit.X; registry.go, factory.go (New/Open/As),
                  tools.go (RunTools), stream.go (Collect), default.go (provider order)
 vertexgrpc/      nested module; users call llmkit.Register(vertexgrpc.Provider{})
+cmd/llmkit/      CLI (chat / embed / resolve), stdlib flag, tests use a registered fake provider
+docs/            GitHub Pages site (gloam design system; gloam.css/js vendored, synced weekly by gloam-sync.yml)
 ```
 
 Import graph is acyclic by construction: `core ← httpx ← providers ← root ← vertexgrpc`.
 Types live in `core` because providers need them and the root needs the providers.
+
+Optional capabilities beyond chat/stream/embed: `core.Reranker` (Cohere, Voyage) and
+`core.MultimodalEmbedder` (Voyage). Add new ones as separate one-method interfaces.
 
 Every provider has the same shape: `const ID`, `Provider struct{}` (`ID`, `Matches`,
 `Open`), `Client` with `New(model, opts...)`, `Provider()`, `Model()`, and ONLY the

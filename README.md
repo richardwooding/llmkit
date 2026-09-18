@@ -4,6 +4,8 @@
 [![CI](https://github.com/richardwooding/llmkit/actions/workflows/ci.yml/badge.svg)](https://github.com/richardwooding/llmkit/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
+**Website:** https://richardwooding.github.io/llmkit/
+
 One Go client for twelve AI back-ends. Pick a model by name, code against a
 one-method interface, and swap vendors without touching call sites.
 
@@ -21,7 +23,7 @@ lives in a separate nested module so its dependency tree stays opt-in.
 
 ## Why
 
-- **Small interfaces.** `Chatter`, `Streamer` and `Embedder` each have one
+- **Small interfaces.** `Chatter`, `Streamer`, `Embedder` and `Reranker` each have one
   method. Ask for exactly what you need with `llmkit.Open[T]`; a provider that
   lacks the capability fails at construction with `ErrUnsupported`, before any
   network call.
@@ -43,27 +45,29 @@ lives in a separate nested module so its dependency tree stays opt-in.
 
 ```sh
 go get github.com/richardwooding/llmkit
-go get github.com/richardwooding/llmkit/vertexgrpc   # optional, Vertex AI over gRPC
+go get github.com/richardwooding/llmkit/vertexgrpc              # optional, Vertex AI over gRPC
+go install github.com/richardwooding/llmkit/cmd/llmkit@latest   # optional CLI
 ```
 
 ## Providers
 
-| Provider | Names | Chat | Stream | Embed | Tools | Image | Audio | File/PDF | Auth |
-|---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|---|
-| OpenAI (Responses API) | `gpt-*`, `o*`, `text-embedding-3-*` | ✅ | ✅ | ✅ | ✅ | ✅ | – | ✅ | `OPENAI_API_KEY` |
-| DeepSeek | `deepseek-*` | ✅ | ✅ | – | ✅¹ | – | – | – | `DEEPSEEK_API_KEY` |
-| Ollama | `name:tag`, bare fallback | ✅ | ✅ | ✅ | ✅ | ✅ | – | – | `OLLAMA_HOST` |
-| Vertex AI (REST) | `gemini-*`, `text-embedding-*` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ADC / `GOOGLE_CLOUD_PROJECT` |
-| Vertex AI (gRPC) | `vertexgrpc/…` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ADC |
-| Anthropic | `claude-*` | ✅ | ✅ | – | ✅ | ✅ | – | ✅ | `ANTHROPIC_API_KEY` |
-| Cohere | `command*`, `embed-*` | ✅ | ✅ | ✅ | ✅ | ✅ | – | – | `COHERE_API_KEY` |
-| Groq | `groq/…` | ✅ | ✅ | – | ✅ | ✅ | – | – | `GROQ_API_KEY` |
-| x.ai (Grok) | `grok-*` | ✅ | ✅ | – | ✅ | ✅ | – | – | `XAI_API_KEY` |
-| Hugging Face | `org/model`, `hf/…` | ✅ | ✅ | ✅ | ✅ | ✅ | – | – | `HF_TOKEN` |
-| OpenRouter | `openrouter/…` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | `OPENROUTER_API_KEY` |
-| VoyageAI | `voyage-*` | – | – | ✅ | – | – | – | – | `VOYAGE_API_KEY` |
+| Provider | Names | Chat | Stream | Embed | Rerank | Tools | Image | Audio | File/PDF | Auth |
+|---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|---|
+| OpenAI (Responses API) | `gpt-*`, `o*`, `text-embedding-3-*` | ✅ | ✅ | ✅ | – | ✅ | ✅ | – | ✅ | `OPENAI_API_KEY` |
+| DeepSeek | `deepseek-*` | ✅ | ✅ | – | – | ✅¹ | – | – | – | `DEEPSEEK_API_KEY` |
+| Ollama | `name:tag`, bare fallback | ✅ | ✅ | ✅ | – | ✅ | ✅ | – | – | `OLLAMA_HOST` |
+| Vertex AI (REST) | `gemini-*`, `text-embedding-*` | ✅ | ✅ | ✅ | – | ✅ | ✅ | ✅ | ✅ | ADC / `GOOGLE_CLOUD_PROJECT` |
+| Vertex AI (gRPC) | `vertexgrpc/…` | ✅ | ✅ | ✅ | – | ✅ | ✅ | ✅ | ✅ | ADC |
+| Anthropic | `claude-*` | ✅ | ✅ | – | – | ✅ | ✅ | – | ✅ | `ANTHROPIC_API_KEY` |
+| Cohere | `command*`, `embed-*`, `rerank-*` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | – | – | `COHERE_API_KEY` |
+| Groq | `groq/…` | ✅ | ✅ | – | – | ✅ | ✅ | – | – | `GROQ_API_KEY` |
+| x.ai (Grok) | `grok-*` | ✅ | ✅ | – | – | ✅ | ✅ | – | – | `XAI_API_KEY` |
+| Hugging Face | `org/model`, `hf/…` | ✅ | ✅ | ✅ | – | ✅ | ✅ | – | – | `HF_TOKEN` |
+| OpenRouter | `openrouter/…` | ✅ | ✅ | ✅ | – | ✅ | ✅ | ✅ | ✅ | `OPENROUTER_API_KEY` |
+| VoyageAI | `voyage-*` | – | – | ✅² | ✅ | – | – | – | – | `VOYAGE_API_KEY` |
 
 ¹ `deepseek-reasoner` rejects tool definitions; llmkit fails fast with `ErrUnsupported`.
+² VoyageAI also implements `MultimodalEmbedder` for text + image + video inputs.
 
 Every provider reads its key from the environment variable shown, or from
 `llmkit.WithAPIKey`. `llmkit.WithBaseURL`, `WithHTTPClient`, `WithHeader` and
@@ -141,6 +145,25 @@ out, err := embed.Embed(ctx, &llmkit.EmbedRequest{
 vectors := out.Embeddings // [][]float32, one per input
 ```
 
+### Rerank
+
+```go
+rr, err := llmkit.Open[llmkit.Reranker]("rerank-v3.5")
+out, err := rr.Rerank(ctx, &llmkit.RerankRequest{Query: "go iterators", Documents: docs, TopN: 3})
+for _, r := range out.Results { // best first
+	fmt.Println(docs[r.Index], r.Score)
+}
+```
+
+### Command line
+
+```sh
+llmkit chat -m claude-sonnet-4-5 "Explain iter.Seq2 in one paragraph"
+echo "Summarise this" | llmkit chat -m llama3.2 -stream
+llmkit embed -m voyage-3-large "first" "second"
+llmkit resolve gpt-5 openrouter/openai/gpt-4o meta-llama/Llama-3.3-70B-Instruct
+```
+
 ### Custom OpenAI-compatible endpoints
 
 ```go
@@ -183,8 +206,8 @@ across vendors. llmkit does not retry; compose an `http.RoundTripper` such as
 
 ## What this is not
 
-- Not an agent framework. `RunTools` is a twenty-line loop; bring your own
-  planning, memory and observability.
+- Not an agent framework. `RunTools` is a small loop; bring your own planning,
+  memory and observability.
 - Not a retry or caching layer. Both belong in the `http.Client` you pass in.
 - Not a wrapper around vendor SDKs. Every REST provider is written against the
   wire format with `net/http`; only `vertexgrpc` pulls in Google's client.

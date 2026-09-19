@@ -23,10 +23,10 @@ lives in a separate nested module so its dependency tree stays opt-in.
 
 ## Why
 
-- **Small interfaces.** `Chatter`, `Streamer`, `Embedder` and `Reranker` each have one
-  method. Ask for exactly what you need with `llmkit.Open[T]`; a provider that
-  lacks the capability fails at construction with `ErrUnsupported`, before any
-  network call.
+- **Small interfaces.** `Chatter`, `Streamer`, `Embedder`, `Reranker` and
+  `TokenCounter` each have one method. Ask for exactly what you need with
+  `llmkit.Open[T]`; a provider that lacks the capability fails at construction
+  with `ErrUnsupported`, before any network call.
 - **Model-name routing.** `"gpt-5"`, `"claude-sonnet-4-5"`, `"gemini-2.5-pro"`,
   `"deepseek-reasoner"`, `"grok-4"`, `"command-a-03-2025"`, `"voyage-3-large"`
   and `"llama3.2:3b"` resolve on their own. Anything ambiguous takes a prefix:
@@ -51,23 +51,26 @@ go install github.com/richardwooding/llmkit/cmd/llmkit@latest   # optional CLI
 
 ## Providers
 
-| Provider | Names | Chat | Stream | Embed | Rerank | Tools | Image | Audio | File/PDF | Auth |
-|---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|---|
-| OpenAI (Responses API) | `gpt-*`, `o*`, `text-embedding-3-*` | ✅ | ✅ | ✅ | – | ✅ | ✅ | – | ✅ | `OPENAI_API_KEY` |
-| DeepSeek | `deepseek-*` | ✅ | ✅ | – | – | ✅¹ | – | – | – | `DEEPSEEK_API_KEY` |
-| Ollama | `name:tag`, bare fallback | ✅ | ✅ | ✅ | – | ✅ | ✅ | – | – | `OLLAMA_HOST` |
-| Vertex AI (REST) | `gemini-*`, `text-embedding-*` | ✅ | ✅ | ✅ | – | ✅ | ✅ | ✅ | ✅ | ADC / `GOOGLE_CLOUD_PROJECT` |
-| Vertex AI (gRPC) | `vertexgrpc/…` | ✅ | ✅ | ✅ | – | ✅ | ✅ | ✅ | ✅ | ADC |
-| Anthropic | `claude-*` | ✅ | ✅ | – | – | ✅ | ✅ | – | ✅ | `ANTHROPIC_API_KEY` |
-| Cohere | `command*`, `embed-*`, `rerank-*` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | – | – | `COHERE_API_KEY` |
-| Groq | `groq/…` | ✅ | ✅ | – | – | ✅ | ✅ | – | – | `GROQ_API_KEY` |
-| x.ai (Grok) | `grok-*` | ✅ | ✅ | – | – | ✅ | ✅ | – | – | `XAI_API_KEY` |
-| Hugging Face | `org/model`, `hf/…` | ✅ | ✅ | ✅ | – | ✅ | ✅ | – | – | `HF_TOKEN` |
-| OpenRouter | `openrouter/…` | ✅ | ✅ | ✅ | – | ✅ | ✅ | ✅ | ✅ | `OPENROUTER_API_KEY` |
-| VoyageAI | `voyage-*` | – | – | ✅² | ✅ | – | – | – | – | `VOYAGE_API_KEY` |
+| Provider | Names | Chat | Stream | Embed | Rerank | Count | Tools | Image | Audio | File/PDF | Cache hints | Auth |
+|---|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|---|
+| OpenAI (Responses API) | `gpt-*`, `o*`, `text-embedding-3-*` | ✅ | ✅ | ✅ | – | – | ✅ | ✅ | – | ✅ | auto | `OPENAI_API_KEY` |
+| DeepSeek | `deepseek-*` | ✅ | ✅ | – | – | – | ✅¹ | – | – | – | auto | `DEEPSEEK_API_KEY` |
+| Ollama | `name:tag`, bare fallback | ✅ | ✅ | ✅ | – | – | ✅ | ✅ | – | – | – | `OLLAMA_HOST` |
+| Vertex AI (REST) | `gemini-*`, `text-embedding-*` | ✅ | ✅ | ✅ | – | – | ✅ | ✅ | ✅ | ✅ | auto | ADC / `GOOGLE_CLOUD_PROJECT` |
+| Vertex AI (gRPC) | `vertexgrpc/…` | ✅ | ✅ | ✅ | – | – | ✅ | ✅ | ✅ | ✅ | auto | ADC |
+| Anthropic | `claude-*` | ✅ | ✅ | – | – | ✅ | ✅ | ✅ | – | ✅ | ✅³ | `ANTHROPIC_API_KEY` |
+| Cohere | `command*`, `embed-*`, `rerank-*` | ✅ | ✅ | ✅ | ✅ | – | ✅ | ✅ | – | – | – | `COHERE_API_KEY` |
+| Groq | `groq/…` | ✅ | ✅ | – | – | – | ✅ | ✅ | – | – | auto | `GROQ_API_KEY` |
+| x.ai (Grok) | `grok-*` | ✅ | ✅ | – | – | – | ✅ | ✅ | – | – | auto | `XAI_API_KEY` |
+| Hugging Face | `org/model`, `hf/…` | ✅ | ✅ | ✅ | – | – | ✅ | ✅ | – | – | – | `HF_TOKEN` |
+| OpenRouter | `openrouter/…` | ✅ | ✅ | ✅ | – | – | ✅ | ✅ | ✅ | ✅ | auto | `OPENROUTER_API_KEY` |
+| VoyageAI | `voyage-*` | – | – | ✅² | ✅ | – | – | – | – | – | – | `VOYAGE_API_KEY` |
 
 ¹ `deepseek-reasoner` rejects tool definitions; llmkit fails fast with `ErrUnsupported`.
 ² VoyageAI also implements `MultimodalEmbedder` for text + image + video inputs.
+³ "auto" providers cache prompt prefixes on their own and ignore `Request.Cache`;
+Anthropic needs explicit `cache_control` breakpoints, which `Request.Cache` places.
+"Count" is the `TokenCounter` interface.
 
 Every provider reads its key from the environment variable shown, or from
 `llmkit.WithAPIKey`. `llmkit.WithBaseURL`, `WithHTTPClient`, `WithHeader` and
@@ -92,7 +95,64 @@ for chunk, err := range stream.Stream(ctx, req) {
 }
 ```
 
-`llmkit.Collect(stream.Stream(ctx, req))` turns a stream back into a `*Response`.
+`llmkit.Collect(stream.Stream(ctx, req))` turns a stream back into a `*Response`,
+reassembling tool-call arguments and reasoning blocks (with their signatures)
+so the result can be appended to `Messages` and sent back on the next turn.
+
+### Reasoning
+
+```go
+req.Reasoning = &llmkit.ReasoningConfig{Effort: "high", Summary: "auto"}
+```
+
+`Effort` steers how hard the model thinks. `Summary` asks for a readable
+summary of the thinking instead of empty blocks: Anthropic's `thinking.display`
+takes `summarized`, `omitted` or `updates`, OpenAI's `reasoning.summary` takes
+`auto`, `concise` or `detailed`, and each provider translates the other's
+"show me a summary" value so one setting works everywhere. Anthropic's
+`max_tokens` defaults to 16384 because thinking counts against it.
+
+### Prompt caching
+
+```go
+req.Cache = &llmkit.CacheConfig{System: true, Tools: true, Turns: 1, TTL: "5m"}
+```
+
+On Anthropic this places `cache_control` breakpoints after the tool
+definitions, after the system prompt and on the last `Turns` user-role turns
+(at most four in total, stable prefix first). Every other provider caches
+prefixes automatically and ignores the field. `Usage.CachedInputTokens` and
+`Usage.CacheWriteTokens` report what was served from and written to the cache;
+both are included in `Usage.InputTokens`, which is the whole prompt on every
+provider.
+
+### Counting tokens
+
+```go
+counter, err := llmkit.Open[llmkit.TokenCounter]("claude-opus-5")
+n, err := counter.CountTokens(ctx, req) // POST /messages/count_tokens, free
+```
+
+Only Anthropic exposes a counting endpoint; `Open[TokenCounter]` on another
+provider fails with `ErrUnsupported`.
+
+### Model catalog
+
+```go
+import "github.com/richardwooding/llmkit/catalog"
+
+m := catalog.Lookup("anthropic/claude-sonnet-4-5") // alias → claude-sonnet-4-5-20250929
+if m.Known {
+	fmt.Println(m.ContextWindow, m.MaxOutput, m.Cost(resp.Usage)) // USD
+}
+```
+
+`catalog` is a static table (stdlib + `core` only) of context windows, output
+limits, list prices per million tokens including cache read/write rates, and
+capabilities, checked against vendor pages on `catalog.DataAsOf`. `Lookup`
+strips `provider/` prefixes and Vertex `@version` suffixes and resolves dated
+snapshots by prefix; anything it does not know comes back with `Known == false`
+and a zero cost rather than a guess. `Register` overrides or adds rows.
 
 ### Tool calling
 

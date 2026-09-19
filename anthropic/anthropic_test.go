@@ -145,7 +145,7 @@ func TestRequestSystemAndDefaults(t *testing.T) {
 		t.Fatal(err)
 	}
 	b := cap.body
-	if b["model"] != "claude-opus-5" || b["system"] != "one\n\ntwo" || b["max_tokens"] != float64(4096) {
+	if b["model"] != "claude-opus-5" || b["system"] != "one\n\ntwo" || b["max_tokens"] != float64(16384) {
 		t.Fatalf("body = %v", b)
 	}
 	if b["temperature"] != 0.5 || b["top_p"] != 0.9 || !reflect.DeepEqual(b["stop_sequences"], []any{"END"}) {

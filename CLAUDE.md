@@ -73,7 +73,7 @@ capability methods its API supports. **The method set is the capability matrix**
   in order; Gemini `functionResponse` addresses tools by NAME, so `ToolResult.Name` is
   required for Vertex. `RunTools` always sets it.
 - **Anthropic** forbids consecutive same-role messages and requires tool results in the next
-  user turn; the mapper merges/hoists. `max_tokens` defaults to 4096. `error` events can
+  user turn; the mapper merges/hoists. `max_tokens` defaults to 16384 so thinking plus a long answer is not truncated. `error` events can
   arrive after HTTP 200 and are turned into `*core.APIError`.
 - **OpenAI Responses API** tools are flat (`{type:"function", name, parameters}`), calls are
   addressed by `call_id`, and the body uses `max_output_tokens`. Chat Completions quirks

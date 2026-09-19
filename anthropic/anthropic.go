@@ -28,7 +28,7 @@ const (
 	headerBeta       = "anthropic-beta"
 	messagesPath     = "/messages"
 	countTokensPath  = "/messages/count_tokens"
-	defaultMaxTokens = 4096
+	defaultMaxTokens = 16384
 )
 
 // Provider registers Anthropic with a llmkit Registry.

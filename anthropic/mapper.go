@@ -11,6 +11,27 @@ import (
 )
 
 func (c *Client) body(req *core.Request, stream bool) ([]byte, error) {
+	w, err := c.wire(req, stream)
+	if err != nil {
+		return nil, err
+	}
+	return httpx.MarshalWithExtra(w, req.ProviderExtra(ID))
+}
+
+// countBody keeps only the fields /messages/count_tokens accepts; generation
+// parameters such as max_tokens are rejected there.
+func (c *Client) countBody(req *core.Request) ([]byte, error) {
+	w, err := c.wire(req, false)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(wireCountRequest{
+		Model: w.Model, System: w.System, Messages: w.Messages,
+		Tools: w.Tools, ToolChoice: w.ToolChoice, Thinking: w.Thinking,
+	})
+}
+
+func (c *Client) wire(req *core.Request, stream bool) (*wireRequest, error) {
 	if req == nil {
 		return nil, fmt.Errorf("%s: nil request", ID)
 	}
@@ -51,7 +72,7 @@ func (c *Client) body(req *core.Request, stream bool) ([]byte, error) {
 		}
 		w.OutputConfig.Format = f
 	}
-	return httpx.MarshalWithExtra(w, req.ProviderExtra(ID))
+	return &w, nil
 }
 
 // applyCache places cache_control breakpoints in prompt order (tools, system,

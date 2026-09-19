@@ -13,6 +13,8 @@ type (
 	Reranker = core.Reranker
 	// MultimodalEmbedder is an alias of core.MultimodalEmbedder.
 	MultimodalEmbedder = core.MultimodalEmbedder
+	// TokenCounter is an alias of core.TokenCounter.
+	TokenCounter = core.TokenCounter
 	// Client is an alias of core.Client.
 	Client = core.Client
 	// Provider is an alias of core.Provider.
@@ -55,6 +57,8 @@ type (
 	ResponseFormat = core.ResponseFormat
 	// ReasoningConfig is an alias of core.ReasoningConfig.
 	ReasoningConfig = core.ReasoningConfig
+	// CacheConfig is an alias of core.CacheConfig.
+	CacheConfig = core.CacheConfig
 	// Response is an alias of core.Response.
 	Response = core.Response
 	// FinishReason is an alias of core.FinishReason.
@@ -67,6 +71,8 @@ type (
 	ChunkKind = core.ChunkKind
 	// ToolCallDelta is an alias of core.ToolCallDelta.
 	ToolCallDelta = core.ToolCallDelta
+	// ReasoningDelta is an alias of core.ReasoningDelta.
+	ReasoningDelta = core.ReasoningDelta
 	// EmbedRequest is an alias of core.EmbedRequest.
 	EmbedRequest = core.EmbedRequest
 	// EmbedResponse is an alias of core.EmbedResponse.

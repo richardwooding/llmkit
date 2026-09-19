@@ -567,6 +567,45 @@ func TestResponseDecode(t *testing.T) {
 	}
 }
 
+func TestCountTokens(t *testing.T) {
+	srv, cap := newServer(t, respondJSON(`{"input_tokens":403}`))
+	c := newClient(t, srv.URL)
+	var counter core.TokenCounter = c
+	req := &core.Request{
+		Messages:    []core.Message{core.System("sys"), core.UserText("hi")},
+		Tools:       []core.Tool{{Name: "f"}},
+		ToolChoice:  core.ToolChoice{Mode: core.ToolChoiceAuto},
+		Reasoning:   &core.ReasoningConfig{Effort: "low"},
+		Cache:       &core.CacheConfig{System: true},
+		MaxTokens:   10,
+		Temperature: new(0.5),
+		Stop:        []string{"x"},
+		Extra:       map[string]any{"top_k": 3},
+	}
+	n, err := counter.CountTokens(context.Background(), req)
+	if err != nil || n != 403 {
+		t.Fatalf("count = %d, %v", n, err)
+	}
+	if cap.path != "/messages/count_tokens" {
+		t.Fatalf("path = %s", cap.path)
+	}
+	b := cap.body
+	if b["model"] != "claude-opus-5" || len(arr(b["messages"])) != 1 || len(arr(b["tools"])) != 1 || obj(b["tool_choice"])["type"] != "auto" || obj(b["thinking"])["type"] != "adaptive" {
+		t.Fatalf("body = %v", b)
+	}
+	if _, ok := obj(arr(b["system"])[0])["cache_control"]; !ok {
+		t.Fatalf("system = %v", b["system"])
+	}
+	for _, k := range []string{"max_tokens", "temperature", "stop_sequences", "stream", "output_config", "top_k"} {
+		if _, ok := b[k]; ok {
+			t.Fatalf("%s must be omitted from count_tokens: %v", k, b)
+		}
+	}
+	if _, err := counter.CountTokens(context.Background(), &core.Request{Messages: []core.Message{core.User(core.Audio(nil, "audio/wav"))}}); !errors.Is(err, core.ErrUnsupported) {
+		t.Fatalf("err = %v", err)
+	}
+}
+
 func TestStopReasons(t *testing.T) {
 	tests := map[string]core.FinishReason{
 		"end_turn":      core.FinishStop,

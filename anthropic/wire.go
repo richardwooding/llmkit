@@ -75,6 +75,19 @@ type wireRequest struct {
 	OutputConfig  *wireOutputConfig `json:"output_config,omitempty"`
 }
 
+type wireCountRequest struct {
+	Model      string          `json:"model"`
+	System     any             `json:"system,omitempty"`
+	Messages   []wireMessage   `json:"messages"`
+	Tools      []wireTool      `json:"tools,omitempty"`
+	ToolChoice *wireToolChoice `json:"tool_choice,omitempty"`
+	Thinking   *wireThinking   `json:"thinking,omitempty"`
+}
+
+type wireCountResponse struct {
+	InputTokens int `json:"input_tokens"`
+}
+
 type wireMessage struct {
 	Role    string      `json:"role"`
 	Content []wireBlock `json:"content"`

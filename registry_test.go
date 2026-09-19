@@ -95,6 +95,14 @@ func TestOpenAndAs(t *testing.T) {
 	if _, err := llmkit.Open[llmkit.Embedder]("deepseek-chat"); !errors.Is(err, llmkit.ErrUnsupported) {
 		t.Fatalf("deepseek embedder err = %v", err)
 	}
+	// Only Anthropic exposes a token-counting endpoint.
+	t.Setenv("OPENAI_API_KEY", "k")
+	if _, err := llmkit.Open[llmkit.TokenCounter]("gpt-5"); !errors.Is(err, llmkit.ErrUnsupported) {
+		t.Fatalf("openai token counter err = %v", err)
+	}
+	if _, err := llmkit.Open[llmkit.TokenCounter]("claude-opus-5", llmkit.WithAPIKey("k")); err != nil {
+		t.Fatalf("anthropic token counter err = %v", err)
+	}
 	type chatStream interface {
 		llmkit.Chatter
 		llmkit.Streamer

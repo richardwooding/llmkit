@@ -23,6 +23,13 @@ type Embedder interface {
 	Embed(ctx context.Context, req *EmbedRequest) (*EmbedResponse, error)
 }
 
+// TokenCounter reports how many input tokens a request would consume,
+// without generating anything. Generation parameters on the Request are
+// ignored; messages, system prompt, tools and reasoning configuration count.
+type TokenCounter interface {
+	CountTokens(ctx context.Context, req *Request) (int, error)
+}
+
 // Client is the handle a Provider returns. Assert it to Chatter, Streamer or
 // Embedder to use it; a provider only implements what its API supports.
 type Client interface {

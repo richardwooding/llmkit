@@ -27,6 +27,7 @@ const (
 	headerVersion    = "anthropic-version"
 	headerBeta       = "anthropic-beta"
 	messagesPath     = "/messages"
+	countTokensPath  = "/messages/count_tokens"
 	defaultMaxTokens = 4096
 )
 
@@ -54,8 +55,8 @@ func WithBeta(features ...string) core.Option {
 // WithVersion overrides the anthropic-version header.
 func WithVersion(v string) core.Option { return core.WithValue(versionKey{}, v) }
 
-// Client talks to one Claude model. It implements core.Chatter and
-// core.Streamer; Anthropic offers no embeddings endpoint.
+// Client talks to one Claude model. It implements core.Chatter, core.Streamer
+// and core.TokenCounter; Anthropic offers no embeddings endpoint.
 type Client struct {
 	model string
 	http  *httpx.Client
@@ -111,4 +112,18 @@ func (c *Client) Chat(ctx context.Context, req *core.Request) (*core.Response, e
 	resp := out.toResponse()
 	resp.Raw = raw
 	return resp, nil
+}
+
+// CountTokens asks /messages/count_tokens how many input tokens req would
+// consume. Request.Extra and ProviderOptions are not sent.
+func (c *Client) CountTokens(ctx context.Context, req *core.Request) (int, error) {
+	body, err := c.countBody(req)
+	if err != nil {
+		return 0, err
+	}
+	var out wireCountResponse
+	if _, err := c.http.PostJSON(ctx, countTokensPath, body, &out); err != nil {
+		return 0, err
+	}
+	return out.InputTokens, nil
 }

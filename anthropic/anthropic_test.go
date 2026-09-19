@@ -580,11 +580,29 @@ data: {"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","
 event: content_block_delta
 data: {"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"sig"}}
 
+event: content_block_stop
+data: {"type":"content_block_stop","index":0}
+
 event: content_block_start
-data: {"type":"content_block_start","index":1,"content_block":{"type":"text","text":""}}
+data: {"type":"content_block_start","index":1,"content_block":{"type":"redacted_thinking","data":"enc"}}
+
+event: content_block_stop
+data: {"type":"content_block_stop","index":1}
+
+event: content_block_start
+data: {"type":"content_block_start","index":2,"content_block":{"type":"thinking","thinking":"","signature":""}}
 
 event: content_block_delta
-data: {"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"done"}}
+data: {"type":"content_block_delta","index":2,"delta":{"type":"thinking_delta","thinking":""}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":2,"delta":{"type":"signature_delta","signature":"sig2"}}
+
+event: content_block_start
+data: {"type":"content_block_start","index":3,"content_block":{"type":"text","text":""}}
+
+event: content_block_delta
+data: {"type":"content_block_delta","index":3,"delta":{"type":"text_delta","text":"done"}}
 
 event: message_delta
 data: {"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":4}}
@@ -604,7 +622,11 @@ data: {"type":"message_stop"}
 		got = append(got, ch)
 	}
 	want := []core.Chunk{
-		{Kind: core.ChunkReasoning, Text: "hmm"},
+		{Kind: core.ChunkReasoning, Text: "hmm", Reasoning: &core.ReasoningDelta{Index: 0, Text: "hmm"}},
+		{Kind: core.ChunkReasoning, Reasoning: &core.ReasoningDelta{Index: 0, Signature: "sig"}},
+		{Kind: core.ChunkReasoning, Reasoning: &core.ReasoningDelta{Index: 1, Encrypted: "enc"}},
+		{Kind: core.ChunkReasoning, Reasoning: &core.ReasoningDelta{Index: 2}},
+		{Kind: core.ChunkReasoning, Reasoning: &core.ReasoningDelta{Index: 2, Signature: "sig2"}},
 		{Kind: core.ChunkText, Text: "done"},
 		{Kind: core.ChunkFinish, FinishReason: core.FinishStop, Usage: &core.Usage{InputTokens: 3, OutputTokens: 4, TotalTokens: 7}},
 	}

@@ -9,8 +9,9 @@ import (
 	"github.com/richardwooding/llmkit/core"
 )
 
-// Collect drains a stream into a Response, concatenating text and reasoning
-// deltas and reassembling tool-call arguments by index.
+// Collect drains a stream into a Response, concatenating text, reassembling
+// reasoning blocks and tool-call arguments by index, and keeping reasoning
+// signatures so the result can be echoed back on the next turn.
 func Collect(seq iter.Seq2[core.Chunk, error]) (*core.Response, error) {
 	var c collector
 	for ch, err := range seq {
@@ -23,11 +24,13 @@ func Collect(seq iter.Seq2[core.Chunk, error]) (*core.Response, error) {
 }
 
 type collector struct {
-	text, reasoning strings.Builder
-	calls           map[int]*core.ToolCall
-	order           []int
-	finish          core.FinishReason
-	usage           core.Usage
+	text      strings.Builder
+	reasons   map[int]*core.ReasoningPart
+	reasonIdx []int
+	calls     map[int]*core.ToolCall
+	order     []int
+	finish    core.FinishReason
+	usage     core.Usage
 }
 
 func (c *collector) apply(ch *core.Chunk) {
@@ -35,7 +38,7 @@ func (c *collector) apply(ch *core.Chunk) {
 	case core.ChunkText:
 		c.text.WriteString(ch.Text)
 	case core.ChunkReasoning:
-		c.reasoning.WriteString(ch.Text)
+		c.reasoning(ch)
 	case core.ChunkToolCall:
 		if ch.ToolCall != nil {
 			c.toolCall(ch.ToolCall)
@@ -45,6 +48,34 @@ func (c *collector) apply(ch *core.Chunk) {
 		if ch.Usage != nil {
 			c.usage = *ch.Usage
 		}
+	}
+}
+
+// reasoning keys blocks by ReasoningDelta.Index; chunks without a delta are
+// legacy text-only fragments and land in block 0.
+func (c *collector) reasoning(ch *core.Chunk) {
+	d := core.ReasoningDelta{Text: ch.Text}
+	if ch.Reasoning != nil {
+		d = *ch.Reasoning
+		if d.Text == "" {
+			d.Text = ch.Text
+		}
+	}
+	if c.reasons == nil {
+		c.reasons = map[int]*core.ReasoningPart{}
+	}
+	p, ok := c.reasons[d.Index]
+	if !ok {
+		p = &core.ReasoningPart{}
+		c.reasons[d.Index] = p
+		c.reasonIdx = append(c.reasonIdx, d.Index)
+	}
+	p.Text += d.Text
+	if d.Signature != "" {
+		p.Signature = d.Signature
+	}
+	if d.Encrypted != "" {
+		p.Encrypted = d.Encrypted
 	}
 }
 
@@ -69,8 +100,11 @@ func (c *collector) toolCall(d *core.ToolCallDelta) {
 
 func (c *collector) response() *core.Response {
 	resp := &core.Response{Message: core.Message{Role: core.RoleAssistant}, FinishReason: c.finish, Usage: c.usage}
-	if c.reasoning.Len() > 0 {
-		resp.Message.Parts = append(resp.Message.Parts, core.ReasoningPart{Text: c.reasoning.String()})
+	sort.Ints(c.reasonIdx)
+	for _, idx := range c.reasonIdx {
+		if p := c.reasons[idx]; *p != (core.ReasoningPart{}) {
+			resp.Message.Parts = append(resp.Message.Parts, *p)
+		}
 	}
 	if c.text.Len() > 0 {
 		resp.Message.Parts = append(resp.Message.Parts, core.Text(c.text.String()))

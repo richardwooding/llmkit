@@ -77,7 +77,11 @@ func (s *streamState) apply(data string) (*core.Chunk, error) {
 	case eventOutputTextDelta, eventRefusalDelta:
 		return &core.Chunk{Kind: core.ChunkText, Text: ev.Delta, Raw: raw}, nil
 	case eventReasoningSummary, eventReasoningText:
-		return &core.Chunk{Kind: core.ChunkReasoning, Text: ev.Delta, Raw: raw}, nil
+		return &core.Chunk{Kind: core.ChunkReasoning, Text: ev.Delta, Raw: raw, Reasoning: &core.ReasoningDelta{
+			Index: ev.OutputIndex, Text: ev.Delta,
+		}}, nil
+	case eventOutputItemDone:
+		return reasoningDone(&ev, raw), nil
 	case eventResponseCompleted, eventResponseIncomplete:
 		s.done = true
 		return s.finish(ev.Response, raw), nil
@@ -88,6 +92,17 @@ func (s *streamState) apply(data string) (*core.Chunk, error) {
 	default:
 		return nil, nil
 	}
+}
+
+// reasoningDone surfaces the reasoning item's id and encrypted_content, which
+// only exist on the completed item and must be echoed back on the next turn.
+func reasoningDone(ev *wireEvent, raw json.RawMessage) *core.Chunk {
+	if ev.Item == nil || ev.Item.Type != typeReasoning {
+		return nil
+	}
+	return &core.Chunk{Kind: core.ChunkReasoning, Raw: raw, Reasoning: &core.ReasoningDelta{
+		Index: ev.OutputIndex, Signature: ev.Item.ID, Encrypted: ev.Item.EncryptedContent,
+	}}
 }
 
 func (s *streamState) finish(resp *wireResponse, raw json.RawMessage) *core.Chunk {

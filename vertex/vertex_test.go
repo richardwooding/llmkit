@@ -557,13 +557,15 @@ func TestChatAPIError(t *testing.T) {
 	}
 }
 
-const streamFixture = `data: {"candidates":[{"content":{"role":"model","parts":[{"text":"thinking","thought":true}]}}],"usageMetadata":{"promptTokenCount":3,"totalTokenCount":3}}
+const streamFixture = `data: {"candidates":[{"content":{"role":"model","parts":[{"text":"think","thought":true}]}}],"usageMetadata":{"promptTokenCount":3,"totalTokenCount":3}}
+
+data: {"candidates":[{"content":{"role":"model","parts":[{"text":"ing","thought":true,"thoughtSignature":"s0"}]}}]}
 
 data: {"candidates":[{"content":{"role":"model","parts":[{"text":"Hel"}]}}]}
 
 data: {"candidates":[{"content":{"role":"model","parts":[{"text":"lo"}]}}]}
 
-data: {"candidates":[{"content":{"role":"model","parts":[{"functionCall":{"name":"f","args":{"a":1}}}]}}]}
+data: {"candidates":[{"content":{"role":"model","parts":[{"functionCall":{"name":"f","args":{"a":1}},"thoughtSignature":"s1"}]}}]}
 
 data: {"candidates":[{"content":{"role":"model","parts":[]},"finishReason":"STOP"}],"usageMetadata":{"promptTokenCount":3,"candidatesTokenCount":4,"totalTokenCount":9,"thoughtsTokenCount":2},"modelVersion":"gemini-2.5-flash"}
 
@@ -591,9 +593,11 @@ func TestStream(t *testing.T) {
 		got = append(got, ch)
 	}
 	want := []core.Chunk{
-		{Kind: core.ChunkReasoning, Text: "thinking"},
+		{Kind: core.ChunkReasoning, Text: "think", Reasoning: &core.ReasoningDelta{Index: 0, Text: "think"}},
+		{Kind: core.ChunkReasoning, Text: "ing", Reasoning: &core.ReasoningDelta{Index: 0, Text: "ing", Signature: "s0"}},
 		{Kind: core.ChunkText, Text: "Hel"},
 		{Kind: core.ChunkText, Text: "lo"},
+		{Kind: core.ChunkReasoning, Reasoning: &core.ReasoningDelta{Index: 1, Signature: "s1"}},
 		{Kind: core.ChunkToolCall, ToolCall: &core.ToolCallDelta{Index: 0, ID: "call_1", Name: "f", Arguments: `{"a":1}`}},
 		{Kind: core.ChunkFinish, FinishReason: core.FinishToolCalls, Usage: &core.Usage{InputTokens: 3, OutputTokens: 6, TotalTokens: 9, ReasoningTokens: 2}},
 	}

@@ -50,6 +50,9 @@ type streamState struct {
 	blocked      bool
 	usage        *core.Usage
 	calls        int
+	// reason is the current reasoning-block ordinal; a thoughtSignature closes
+	// the block, so thought text streamed before it reassembles into one part.
+	reason int
 }
 
 func (s *streamState) apply(data string) ([]core.Chunk, error) {
@@ -75,28 +78,41 @@ func (s *streamState) apply(data string) ([]core.Chunk, error) {
 	raw := json.RawMessage(data)
 	chunks := make([]core.Chunk, 0, len(cand.Content.Parts))
 	for i := range cand.Content.Parts {
-		if ch, ok := s.chunk(&cand.Content.Parts[i], raw); ok {
-			chunks = append(chunks, ch)
-		}
+		chunks = append(chunks, s.chunks(&cand.Content.Parts[i], raw)...)
 	}
 	return chunks, nil
 }
 
-func (s *streamState) chunk(p *wirePart, raw json.RawMessage) (core.Chunk, bool) {
+func (s *streamState) chunks(p *wirePart, raw json.RawMessage) []core.Chunk {
 	switch {
+	case p.Thought:
+		d := &core.ReasoningDelta{Index: s.reason, Text: p.Text, Signature: p.ThoughtSignature}
+		if p.ThoughtSignature != "" {
+			s.reason++
+		}
+		return []core.Chunk{{Kind: core.ChunkReasoning, Text: p.Text, Raw: raw, Reasoning: d}}
 	case p.FunctionCall != nil:
 		idx := s.calls
 		s.calls++
-		return core.Chunk{Kind: core.ChunkToolCall, Raw: raw, ToolCall: &core.ToolCallDelta{
+		return append(s.signature(p, raw), core.Chunk{Kind: core.ChunkToolCall, Raw: raw, ToolCall: &core.ToolCallDelta{
 			Index: idx, ID: callID(s.calls), Name: p.FunctionCall.Name, Arguments: string(rawArgs(p.FunctionCall.Args)),
-		}}, true
+		}})
 	case p.Text == "":
-		return core.Chunk{}, false
-	case p.Thought:
-		return core.Chunk{Kind: core.ChunkReasoning, Text: p.Text, Raw: raw}, true
+		return nil
 	default:
-		return core.Chunk{Kind: core.ChunkText, Text: p.Text, Raw: raw}, true
+		return append(s.signature(p, raw), core.Chunk{Kind: core.ChunkText, Text: p.Text, Raw: raw})
 	}
+}
+
+// signature emits a bare reasoning chunk for a thoughtSignature riding on a
+// text or function-call part, mirroring how the non-streaming mapper splits it.
+func (s *streamState) signature(p *wirePart, raw json.RawMessage) []core.Chunk {
+	if p.ThoughtSignature == "" {
+		return nil
+	}
+	d := &core.ReasoningDelta{Index: s.reason, Signature: p.ThoughtSignature}
+	s.reason++
+	return []core.Chunk{{Kind: core.ChunkReasoning, Raw: raw, Reasoning: d}}
 }
 
 func streamError(errObj json.RawMessage, data string) error {

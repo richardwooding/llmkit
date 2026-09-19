@@ -44,6 +44,7 @@ const (
 	deltaText      = "text_delta"
 	deltaThinking  = "thinking_delta"
 	deltaInputJSON = "input_json_delta"
+	deltaSignature = "signature_delta"
 )
 
 type wireRequest struct {
@@ -151,6 +152,7 @@ type streamDelta struct {
 	Text        string `json:"text"`
 	Thinking    string `json:"thinking"`
 	PartialJSON string `json:"partial_json"`
+	Signature   string `json:"signature"`
 	StopReason  string `json:"stop_reason"`
 }
 

@@ -25,7 +25,7 @@ func (c *Client) Stream(ctx context.Context, req *core.Request) iter.Seq2[core.C
 			return
 		}
 		defer func() { _ = rc.Close() }()
-		st := &streamState{tools: map[int]int{}}
+		st := &streamState{tools: map[int]int{}, reasons: map[int]int{}}
 		if st.run(rc, yield) && !st.done {
 			yield(st.finish(), nil)
 		}
@@ -33,8 +33,10 @@ func (c *Client) Stream(ctx context.Context, req *core.Request) iter.Seq2[core.C
 }
 
 type streamState struct {
-	// tools maps a content block index to the ordinal of its tool call.
+	// tools and reasons map a content block index to the ordinal of its tool
+	// call or reasoning block, which is what Collect keys reassembly on.
 	tools      map[int]int
+	reasons    map[int]int
 	stopReason string
 	usage      wireUsage
 	done       bool
@@ -91,14 +93,29 @@ func (s *streamState) apply(data string) ([]core.Chunk, error) {
 }
 
 func (s *streamState) blockStart(ev *streamEvent, raw json.RawMessage) []core.Chunk {
-	if ev.ContentBlock == nil || ev.ContentBlock.Type != blockToolUse {
+	if ev.ContentBlock == nil {
 		return nil
 	}
-	ordinal := len(s.tools)
-	s.tools[ev.Index] = ordinal
-	return []core.Chunk{{Kind: core.ChunkToolCall, Raw: raw, ToolCall: &core.ToolCallDelta{
-		Index: ordinal, ID: ev.ContentBlock.ID, Name: ev.ContentBlock.Name,
-	}}}
+	switch ev.ContentBlock.Type {
+	case blockToolUse:
+		ordinal := len(s.tools)
+		s.tools[ev.Index] = ordinal
+		return []core.Chunk{{Kind: core.ChunkToolCall, Raw: raw, ToolCall: &core.ToolCallDelta{
+			Index: ordinal, ID: ev.ContentBlock.ID, Name: ev.ContentBlock.Name,
+		}}}
+	case blockThinking:
+		s.reasons[ev.Index] = len(s.reasons)
+		return nil
+	case blockRedactedThinking:
+		// Redacted blocks arrive whole: the opaque data is the only payload.
+		ordinal := len(s.reasons)
+		s.reasons[ev.Index] = ordinal
+		return []core.Chunk{{Kind: core.ChunkReasoning, Raw: raw, Reasoning: &core.ReasoningDelta{
+			Index: ordinal, Encrypted: ev.ContentBlock.Data,
+		}}}
+	default:
+		return nil
+	}
 }
 
 func (s *streamState) blockDelta(ev *streamEvent, raw json.RawMessage) []core.Chunk {
@@ -109,7 +126,13 @@ func (s *streamState) blockDelta(ev *streamEvent, raw json.RawMessage) []core.Ch
 	case deltaText:
 		return []core.Chunk{{Kind: core.ChunkText, Text: ev.Delta.Text, Raw: raw}}
 	case deltaThinking:
-		return []core.Chunk{{Kind: core.ChunkReasoning, Text: ev.Delta.Thinking, Raw: raw}}
+		return []core.Chunk{{Kind: core.ChunkReasoning, Text: ev.Delta.Thinking, Raw: raw, Reasoning: &core.ReasoningDelta{
+			Index: s.reasons[ev.Index], Text: ev.Delta.Thinking,
+		}}}
+	case deltaSignature:
+		return []core.Chunk{{Kind: core.ChunkReasoning, Raw: raw, Reasoning: &core.ReasoningDelta{
+			Index: s.reasons[ev.Index], Signature: ev.Delta.Signature,
+		}}}
 	case deltaInputJSON:
 		ordinal, ok := s.tools[ev.Index]
 		if !ok {

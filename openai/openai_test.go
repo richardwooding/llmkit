@@ -370,6 +370,9 @@ data: {"type":"response.output_item.added","sequence_number":1,"output_index":0,
 event: response.reasoning_summary_text.delta
 data: {"type":"response.reasoning_summary_text.delta","sequence_number":2,"item_id":"rs_1","output_index":0,"summary_index":0,"delta":"hmm"}
 
+event: response.output_item.done
+data: {"type":"response.output_item.done","sequence_number":2,"output_index":0,"item":{"id":"rs_1","type":"reasoning","summary":[{"type":"summary_text","text":"hmm"}],"encrypted_content":"enc"}}
+
 event: response.output_item.added
 data: {"type":"response.output_item.added","sequence_number":3,"output_index":1,"item":{"id":"msg_1","type":"message","role":"assistant","content":[]}}
 
@@ -397,6 +400,9 @@ data: {"type":"response.function_call_arguments.delta","sequence_number":10,"ite
 event: response.function_call_arguments.done
 data: {"type":"response.function_call_arguments.done","sequence_number":11,"item_id":"fc_1","output_index":2,"arguments":"{\"a\":1}"}
 
+event: response.output_item.done
+data: {"type":"response.output_item.done","sequence_number":11,"output_index":2,"item":{"id":"fc_1","type":"function_call","call_id":"call_1","name":"f","arguments":"{\"a\":1}"}}
+
 event: response.completed
 data: {"type":"response.completed","sequence_number":12,"response":{"id":"resp_1","status":"completed","output":[{"id":"fc_1","type":"function_call","call_id":"call_1","name":"f","arguments":"{\"a\":1}"}],"usage":{"input_tokens":5,"output_tokens":7,"total_tokens":12,"input_tokens_details":{"cached_tokens":1},"output_tokens_details":{"reasoning_tokens":2}}}}
 
@@ -420,7 +426,8 @@ func TestStream(t *testing.T) {
 		t.Fatalf("body = %v path = %s", cap.body, cap.path)
 	}
 	want := []core.Chunk{
-		{Kind: core.ChunkReasoning, Text: "hmm"},
+		{Kind: core.ChunkReasoning, Text: "hmm", Reasoning: &core.ReasoningDelta{Index: 0, Text: "hmm"}},
+		{Kind: core.ChunkReasoning, Reasoning: &core.ReasoningDelta{Index: 0, Signature: "rs_1", Encrypted: "enc"}},
 		{Kind: core.ChunkText, Text: "Hel"},
 		{Kind: core.ChunkText, Text: "lo"},
 		{Kind: core.ChunkText, Text: "no"},

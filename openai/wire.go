@@ -20,6 +20,7 @@ const (
 	includeEncryptedReasoning = "reasoning.encrypted_content"
 
 	eventOutputItemAdded      = "response.output_item.added"
+	eventOutputItemDone       = "response.output_item.done"
 	eventOutputTextDelta      = "response.output_text.delta"
 	eventRefusalDelta         = "response.refusal.delta"
 	eventFunctionArgsDelta    = "response.function_call_arguments.delta"

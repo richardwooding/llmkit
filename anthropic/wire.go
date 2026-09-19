@@ -127,9 +127,25 @@ type wireResponse struct {
 }
 
 type wireUsage struct {
-	InputTokens          int `json:"input_tokens"`
-	OutputTokens         int `json:"output_tokens"`
-	CacheReadInputTokens int `json:"cache_read_input_tokens"`
+	InputTokens              int `json:"input_tokens"`
+	OutputTokens             int `json:"output_tokens"`
+	CacheReadInputTokens     int `json:"cache_read_input_tokens"`
+	CacheCreationInputTokens int `json:"cache_creation_input_tokens"`
+}
+
+// merge overlays the non-zero fields of o, as message_delta usage repeats only
+// what changed.
+func (u *wireUsage) merge(o *wireUsage) {
+	for _, f := range []struct{ dst, src *int }{
+		{&u.InputTokens, &o.InputTokens},
+		{&u.OutputTokens, &o.OutputTokens},
+		{&u.CacheReadInputTokens, &o.CacheReadInputTokens},
+		{&u.CacheCreationInputTokens, &o.CacheCreationInputTokens},
+	} {
+		if *f.src > 0 {
+			*f.dst = *f.src
+		}
+	}
 }
 
 type wireError struct {
@@ -191,12 +207,17 @@ func (b *wireBlock) toPart() core.Part {
 	}
 }
 
+// toUsage folds the cache counters into InputTokens: the API reports
+// input_tokens as only the uncached remainder, whereas core.Usage promises the
+// whole prompt on every provider.
 func (u *wireUsage) toUsage() core.Usage {
+	input := u.InputTokens + u.CacheReadInputTokens + u.CacheCreationInputTokens
 	return core.Usage{
-		InputTokens:       u.InputTokens,
+		InputTokens:       input,
 		OutputTokens:      u.OutputTokens,
-		TotalTokens:       u.InputTokens + u.OutputTokens,
+		TotalTokens:       input + u.OutputTokens,
 		CachedInputTokens: u.CacheReadInputTokens,
+		CacheWriteTokens:  u.CacheCreationInputTokens,
 	}
 }
 

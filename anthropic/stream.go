@@ -150,17 +150,8 @@ func (s *streamState) messageDelta(ev *streamEvent) {
 	if ev.Delta != nil && ev.Delta.StopReason != "" {
 		s.stopReason = ev.Delta.StopReason
 	}
-	if ev.Usage == nil {
-		return
-	}
-	if ev.Usage.OutputTokens > 0 {
-		s.usage.OutputTokens = ev.Usage.OutputTokens
-	}
-	if ev.Usage.InputTokens > 0 {
-		s.usage.InputTokens = ev.Usage.InputTokens
-	}
-	if ev.Usage.CacheReadInputTokens > 0 {
-		s.usage.CacheReadInputTokens = ev.Usage.CacheReadInputTokens
+	if ev.Usage != nil {
+		s.usage.merge(ev.Usage)
 	}
 }
 

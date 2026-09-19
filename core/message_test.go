@@ -115,7 +115,7 @@ func TestProviderExtra(t *testing.T) {
 	if (&core.Request{}).ProviderExtra("p") != nil {
 		t.Fatal("empty extra should be nil")
 	}
-	if u := (core.Usage{InputTokens: 1}).Add(core.Usage{InputTokens: 2, OutputTokens: 3}); u.InputTokens != 3 || u.OutputTokens != 3 {
+	if u := (core.Usage{InputTokens: 1, CacheWriteTokens: 4}).Add(core.Usage{InputTokens: 2, OutputTokens: 3, CacheWriteTokens: 1}); u.InputTokens != 3 || u.OutputTokens != 3 || u.CacheWriteTokens != 5 {
 		t.Fatalf("Add = %+v", u)
 	}
 }

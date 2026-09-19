@@ -426,7 +426,7 @@ func TestResponseDecode(t *testing.T) {
 	    {"type":"tool_use","id":"toolu_2","name":"noop","input":{}}
 	  ],
 	  "stop_reason":"tool_use","stop_sequence":null,
-	  "usage":{"input_tokens":30,"output_tokens":12,"cache_read_input_tokens":20,"cache_creation_input_tokens":0}}`))
+	  "usage":{"input_tokens":30,"output_tokens":12,"cache_read_input_tokens":20,"cache_creation_input_tokens":8}}`))
 	c := newClient(t, srv.URL)
 	resp, err := c.Chat(context.Background(), &core.Request{Messages: []core.Message{core.UserText("x")}})
 	if err != nil {
@@ -445,7 +445,8 @@ func TestResponseDecode(t *testing.T) {
 			core.ToolCall{ID: "toolu_1", Name: "get_weather", Arguments: json.RawMessage(`{"city":"Paris"}`)},
 			core.ToolCall{ID: "toolu_2", Name: "noop", Arguments: json.RawMessage(`{}`)},
 		),
-		Usage: core.Usage{InputTokens: 30, OutputTokens: 12, TotalTokens: 42, CachedInputTokens: 20},
+		// InputTokens is the whole prompt: 30 uncached + 20 read + 8 written.
+		Usage: core.Usage{InputTokens: 58, OutputTokens: 12, TotalTokens: 70, CachedInputTokens: 20, CacheWriteTokens: 8},
 	}
 	if !reflect.DeepEqual(resp, want) {
 		t.Fatalf("resp:\n got %+v\nwant %+v", resp, want)
@@ -492,7 +493,7 @@ func TestChatHTTPError(t *testing.T) {
 }
 
 const streamFixture = `event: message_start
-data: {"type":"message_start","message":{"id":"msg_1","type":"message","role":"assistant","model":"claude-opus-5","content":[],"stop_reason":null,"usage":{"input_tokens":25,"output_tokens":1,"cache_read_input_tokens":5}}}
+data: {"type":"message_start","message":{"id":"msg_1","type":"message","role":"assistant","model":"claude-opus-5","content":[],"stop_reason":null,"usage":{"input_tokens":25,"output_tokens":1,"cache_read_input_tokens":5,"cache_creation_input_tokens":0}}}
 
 event: content_block_start
 data: {"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}
@@ -522,7 +523,7 @@ event: content_block_stop
 data: {"type":"content_block_stop","index":1}
 
 event: message_delta
-data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null},"usage":{"output_tokens":7}}
+data: {"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null},"usage":{"input_tokens":25,"cache_read_input_tokens":5,"cache_creation_input_tokens":10,"output_tokens":7}}
 
 event: message_stop
 data: {"type":"message_stop"}
@@ -560,7 +561,7 @@ func TestStream(t *testing.T) {
 		{Kind: core.ChunkToolCall, ToolCall: &core.ToolCallDelta{Index: 0, ID: "toolu_1", Name: "f"}},
 		{Kind: core.ChunkToolCall, ToolCall: &core.ToolCallDelta{Index: 0, Arguments: `{"a":`}},
 		{Kind: core.ChunkToolCall, ToolCall: &core.ToolCallDelta{Index: 0, Arguments: `1}`}},
-		{Kind: core.ChunkFinish, FinishReason: core.FinishToolCalls, Usage: &core.Usage{InputTokens: 25, OutputTokens: 7, TotalTokens: 32, CachedInputTokens: 5}},
+		{Kind: core.ChunkFinish, FinishReason: core.FinishToolCalls, Usage: &core.Usage{InputTokens: 40, OutputTokens: 7, TotalTokens: 47, CachedInputTokens: 5, CacheWriteTokens: 10}},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("chunks:\n got %+v\nwant %+v", got, want)

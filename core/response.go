@@ -15,11 +15,18 @@ const (
 )
 
 // Usage reports token consumption. Fields a provider does not report are zero.
+//
+// InputTokens is the whole prompt on every provider, including the tokens
+// served from cache (CachedInputTokens) and written to it (CacheWriteTokens);
+// both are subsets of InputTokens, so the uncached remainder is
+// InputTokens - CachedInputTokens - CacheWriteTokens. TotalTokens is
+// InputTokens + OutputTokens. ReasoningTokens is a subset of OutputTokens.
 type Usage struct {
 	InputTokens       int
 	OutputTokens      int
 	TotalTokens       int
 	CachedInputTokens int
+	CacheWriteTokens  int
 	ReasoningTokens   int
 }
 
@@ -30,6 +37,7 @@ func (u Usage) Add(o Usage) Usage {
 		OutputTokens:      u.OutputTokens + o.OutputTokens,
 		TotalTokens:       u.TotalTokens + o.TotalTokens,
 		CachedInputTokens: u.CachedInputTokens + o.CachedInputTokens,
+		CacheWriteTokens:  u.CacheWriteTokens + o.CacheWriteTokens,
 		ReasoningTokens:   u.ReasoningTokens + o.ReasoningTokens,
 	}
 }

@@ -4,7 +4,7 @@ go 1.27.0
 
 require (
 	cloud.google.com/go/aiplatform v1.126.0
-	github.com/richardwooding/llmkit v0.2.0
+	github.com/richardwooding/llmkit v0.3.0
 	google.golang.org/api v0.298.0
 	google.golang.org/grpc v1.84.0
 	google.golang.org/protobuf v1.36.12

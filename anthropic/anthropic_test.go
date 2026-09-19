@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -380,6 +381,109 @@ func TestReasoningAndFormat(t *testing.T) {
 	}
 	if _, ok := cap.body["thinking"]; ok {
 		t.Fatal("thinking must be omitted without Reasoning")
+	}
+}
+
+// cacheMarks lists every wire location carrying cache_control.
+func cacheMarks(body map[string]any) []string {
+	var marks []string
+	if tools, ok := body["tools"].([]any); ok {
+		for i, tl := range tools {
+			if _, ok := obj(tl)["cache_control"]; ok {
+				marks = append(marks, fmt.Sprintf("tools[%d]", i))
+			}
+		}
+	}
+	if sys, ok := body["system"].([]any); ok {
+		for i, b := range sys {
+			if _, ok := obj(b)["cache_control"]; ok {
+				marks = append(marks, fmt.Sprintf("system[%d]", i))
+			}
+		}
+	}
+	for i, m := range arr(body["messages"]) {
+		for j, b := range arr(obj(m)["content"]) {
+			if _, ok := obj(b)["cache_control"]; ok {
+				marks = append(marks, fmt.Sprintf("messages[%d].content[%d]", i, j))
+			}
+		}
+	}
+	return marks
+}
+
+func TestRequestCacheControl(t *testing.T) {
+	tests := []struct {
+		name       string
+		cache      *core.CacheConfig
+		wantSystem any
+		wantMarks  []string
+		wantCC     map[string]any
+		wantErr    bool
+	}{
+		{name: "nil keeps system a string", wantSystem: "sys"},
+		{
+			name: "system", cache: &core.CacheConfig{System: true},
+			wantSystem: []any{map[string]any{"type": "text", "text": "sys", "cache_control": map[string]any{"type": "ephemeral"}}},
+			wantMarks:  []string{"system[0]"}, wantCC: map[string]any{"type": "ephemeral"},
+		},
+		{
+			name: "tools with 1h ttl", cache: &core.CacheConfig{Tools: true, TTL: "1h"},
+			wantSystem: []any{map[string]any{"type": "text", "text": "sys"}},
+			wantMarks:  []string{"tools[1]"}, wantCC: map[string]any{"type": "ephemeral", "ttl": "1h"},
+		},
+		{
+			name: "turns mark the last block of the last user-role messages", cache: &core.CacheConfig{Turns: 2},
+			wantSystem: []any{map[string]any{"type": "text", "text": "sys"}},
+			wantMarks:  []string{"messages[2].content[1]", "messages[4].content[0]"}, wantCC: map[string]any{"type": "ephemeral"},
+		},
+		{
+			name: "capped at four breakpoints", cache: &core.CacheConfig{System: true, Tools: true, Turns: 5, TTL: "5m"},
+			wantSystem: []any{map[string]any{"type": "text", "text": "sys", "cache_control": map[string]any{"type": "ephemeral"}}},
+			wantMarks:  []string{"tools[1]", "system[0]", "messages[2].content[1]", "messages[4].content[0]"},
+			wantCC:     map[string]any{"type": "ephemeral"},
+		},
+		{name: "bad ttl", cache: &core.CacheConfig{System: true, TTL: "2h"}, wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			srv, cap := newServer(t, respondJSON(minimalResponse))
+			c := newClient(t, srv.URL)
+			req := &core.Request{
+				Cache: tt.cache,
+				Tools: []core.Tool{{Name: "f"}, {Name: "g"}},
+				Messages: []core.Message{
+					core.System("sys"),
+					core.UserText("a"),
+					core.Assistant(core.Text("x"), core.ToolCall{ID: "t1", Name: "f"}),
+					core.ToolResults(core.ToolResultText("t1", "f", "1")),
+					core.UserText("b"),
+					core.Assistant(core.Text("y")),
+					core.UserText("c"),
+				},
+			}
+			_, err := c.Chat(context.Background(), req)
+			if tt.wantErr {
+				if err == nil || cap.body != nil {
+					t.Fatalf("want error before I/O, got err=%v body=%v", err, cap.body)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(cap.body["system"], tt.wantSystem) {
+				t.Fatalf("system = %#v, want %#v", cap.body["system"], tt.wantSystem)
+			}
+			if got := cacheMarks(cap.body); !reflect.DeepEqual(got, tt.wantMarks) {
+				t.Fatalf("cache_control at %v, want %v", got, tt.wantMarks)
+			}
+			if len(tt.wantMarks) > 0 {
+				last := obj(arr(obj(arr(cap.body["messages"])[4])["content"])[0])
+				if cc, ok := last["cache_control"]; ok && !reflect.DeepEqual(cc, tt.wantCC) {
+					t.Fatalf("cache_control = %v, want %v", cc, tt.wantCC)
+				}
+			}
+		})
 	}
 }
 

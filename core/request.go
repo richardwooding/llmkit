@@ -19,6 +19,7 @@ type Request struct {
 	Seed        *int64
 	Format      *ResponseFormat
 	Reasoning   *ReasoningConfig
+	Cache       *CacheConfig
 
 	// Extra is merged into the top level of the wire body for any provider.
 	Extra map[string]any
@@ -72,6 +73,17 @@ const (
 type ReasoningConfig struct {
 	Effort       string
 	BudgetTokens int
+}
+
+// CacheConfig asks a provider with explicit prompt caching (Anthropic) to
+// mark cache breakpoints: after the system prompt, after the tool definitions
+// and after the last Turns user-role messages. Providers with automatic
+// caching ignore it. TTL is "5m" (default) or "1h".
+type CacheConfig struct {
+	System bool
+	Tools  bool
+	Turns  int
+	TTL    string
 }
 
 // ProviderExtra returns the merged provider-specific overrides for id.

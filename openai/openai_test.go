@@ -153,6 +153,7 @@ func TestChatRequestMapping(t *testing.T) {
 		Stop:            []string{"x"},
 		Format:          &core.ResponseFormat{Type: core.FormatJSONSchema, Name: "s", Schema: json.RawMessage(`{"type":"object"}`), Strict: true},
 		Reasoning:       &core.ReasoningConfig{Effort: "high"},
+		Cache:           &core.CacheConfig{System: true, Tools: true, Turns: 2},
 		Extra:           map[string]any{"store": false},
 		ProviderOptions: map[string]map[string]any{"openai": {"previous_response_id": "resp_0"}, "other": {"z": 1}},
 	}
@@ -173,6 +174,10 @@ func TestChatRequestMapping(t *testing.T) {
 	}
 	if b["store"] != false || b["previous_response_id"] != "resp_0" {
 		t.Fatalf("extra not merged: %v", b)
+	}
+	// Prompt caching is automatic on OpenAI; CacheConfig must leave no trace.
+	if raw, _ := json.Marshal(b); strings.Contains(string(raw), "cache_control") {
+		t.Fatalf("cache_control leaked into body: %s", raw)
 	}
 	if obj(t, b["reasoning"])["effort"] != "high" || !reflect.DeepEqual(b["include"], []any{"reasoning.encrypted_content"}) {
 		t.Fatalf("reasoning = %v include = %v", b["reasoning"], b["include"])

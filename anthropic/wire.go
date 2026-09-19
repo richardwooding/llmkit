@@ -45,12 +45,20 @@ const (
 	deltaThinking  = "thinking_delta"
 	deltaInputJSON = "input_json_delta"
 	deltaSignature = "signature_delta"
+
+	cacheEphemeral = "ephemeral"
+	cacheTTL5m     = "5m"
+	cacheTTL1h     = "1h"
+	// maxCacheBreakpoints is the API's per-request cache_control limit.
+	maxCacheBreakpoints = 4
 )
 
+// wireRequest.System is a string, or []wireBlock when cache_control must be
+// attached to it.
 type wireRequest struct {
 	Model         string            `json:"model"`
 	MaxTokens     int               `json:"max_tokens"`
-	System        string            `json:"system,omitempty"`
+	System        any               `json:"system,omitempty"`
 	Messages      []wireMessage     `json:"messages"`
 	Tools         []wireTool        `json:"tools,omitempty"`
 	ToolChoice    *wireToolChoice   `json:"tool_choice,omitempty"`
@@ -69,19 +77,25 @@ type wireMessage struct {
 
 // wireBlock is the union of every content block shape sent or received.
 type wireBlock struct {
-	Type      string          `json:"type"`
-	Text      string          `json:"text,omitempty"`
-	Source    *wireSource     `json:"source,omitempty"`
-	Title     string          `json:"title,omitempty"`
-	Thinking  *string         `json:"thinking,omitempty"`
-	Signature string          `json:"signature,omitempty"`
-	Data      string          `json:"data,omitempty"`
-	ID        string          `json:"id,omitempty"`
-	Name      string          `json:"name,omitempty"`
-	Input     json.RawMessage `json:"input,omitempty"`
-	ToolUseID string          `json:"tool_use_id,omitempty"`
-	Content   any             `json:"content,omitempty"`
-	IsError   bool            `json:"is_error,omitempty"`
+	Type         string            `json:"type"`
+	Text         string            `json:"text,omitempty"`
+	Source       *wireSource       `json:"source,omitempty"`
+	Title        string            `json:"title,omitempty"`
+	Thinking     *string           `json:"thinking,omitempty"`
+	Signature    string            `json:"signature,omitempty"`
+	Data         string            `json:"data,omitempty"`
+	ID           string            `json:"id,omitempty"`
+	Name         string            `json:"name,omitempty"`
+	Input        json.RawMessage   `json:"input,omitempty"`
+	ToolUseID    string            `json:"tool_use_id,omitempty"`
+	Content      any               `json:"content,omitempty"`
+	IsError      bool              `json:"is_error,omitempty"`
+	CacheControl *wireCacheControl `json:"cache_control,omitempty"`
+}
+
+type wireCacheControl struct {
+	Type string `json:"type"`
+	TTL  string `json:"ttl,omitempty"`
 }
 
 type wireSource struct {
@@ -92,10 +106,11 @@ type wireSource struct {
 }
 
 type wireTool struct {
-	Name        string          `json:"name"`
-	Description string          `json:"description,omitempty"`
-	InputSchema json.RawMessage `json:"input_schema"`
-	Strict      bool            `json:"strict,omitempty"`
+	Name         string            `json:"name"`
+	Description  string            `json:"description,omitempty"`
+	InputSchema  json.RawMessage   `json:"input_schema"`
+	Strict       bool              `json:"strict,omitempty"`
+	CacheControl *wireCacheControl `json:"cache_control,omitempty"`
 }
 
 type wireToolChoice struct {

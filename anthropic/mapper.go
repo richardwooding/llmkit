@@ -21,7 +21,6 @@ func (c *Client) body(req *core.Request, stream bool) ([]byte, error) {
 	w := wireRequest{
 		Model:         c.model,
 		MaxTokens:     req.MaxTokens,
-		System:        system,
 		Messages:      msgs,
 		Tools:         tools(req.Tools),
 		ToolChoice:    toolChoice(req.ToolChoice),
@@ -30,8 +29,16 @@ func (c *Client) body(req *core.Request, stream bool) ([]byte, error) {
 		StopSequences: req.Stop,
 		Stream:        stream,
 	}
+	if system != "" {
+		w.System = system
+	}
 	if w.MaxTokens <= 0 {
 		w.MaxTokens = defaultMaxTokens
+	}
+	if req.Cache != nil {
+		if err := applyCache(&w, system, req.Cache); err != nil {
+			return nil, err
+		}
 	}
 	w.Thinking, w.OutputConfig = reasoning(req.Reasoning)
 	if req.Format != nil {
@@ -45,6 +52,50 @@ func (c *Client) body(req *core.Request, stream bool) ([]byte, error) {
 		w.OutputConfig.Format = f
 	}
 	return httpx.MarshalWithExtra(w, req.ProviderExtra(ID))
+}
+
+// applyCache places cache_control breakpoints in prompt order (tools, system,
+// then the last cfg.Turns user-role messages) and stops at the API's limit of
+// four, so the stable prefix is preferred when the caller asks for too many.
+func applyCache(w *wireRequest, system string, cfg *core.CacheConfig) error {
+	cc, err := cacheControl(cfg.TTL)
+	if err != nil {
+		return err
+	}
+	slots := maxCacheBreakpoints
+	if cfg.Tools && len(w.Tools) > 0 {
+		w.Tools[len(w.Tools)-1].CacheControl = cc
+		slots--
+	}
+	if system != "" {
+		block := wireBlock{Type: blockText, Text: system}
+		if cfg.System {
+			block.CacheControl = cc
+			slots--
+		}
+		w.System = []wireBlock{block}
+	}
+	turns := min(cfg.Turns, slots)
+	for i := len(w.Messages) - 1; i >= 0 && turns > 0; i-- {
+		m := &w.Messages[i]
+		if m.Role != roleUser || len(m.Content) == 0 {
+			continue
+		}
+		m.Content[len(m.Content)-1].CacheControl = cc
+		turns--
+	}
+	return nil
+}
+
+func cacheControl(ttl string) (*wireCacheControl, error) {
+	switch ttl {
+	case "", cacheTTL5m:
+		return &wireCacheControl{Type: cacheEphemeral}, nil
+	case cacheTTL1h:
+		return &wireCacheControl{Type: cacheEphemeral, TTL: cacheTTL1h}, nil
+	default:
+		return nil, fmt.Errorf("%s: unsupported cache TTL %q (want 5m or 1h)", ID, ttl)
+	}
 }
 
 // reasoning prefers adaptive thinking plus output_config.effort; an explicit

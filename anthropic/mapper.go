@@ -104,14 +104,21 @@ func reasoning(cfg *core.ReasoningConfig) (*wireThinking, *wireOutputConfig) {
 	if cfg == nil {
 		return nil, nil
 	}
-	th := &wireThinking{Type: thinkingAdaptive}
+	th := &wireThinking{Type: thinkingAdaptive, Display: display(cfg.Summary)}
 	if cfg.BudgetTokens > 0 {
-		th = &wireThinking{Type: thinkingEnabled, BudgetTokens: cfg.BudgetTokens}
+		th = &wireThinking{Type: thinkingEnabled, BudgetTokens: cfg.BudgetTokens, Display: th.Display}
 	}
 	if cfg.Effort == "" {
 		return th, nil
 	}
 	return th, &wireOutputConfig{Effort: cfg.Effort}
+}
+
+func display(summary string) string {
+	if summary == summaryAuto {
+		return displaySummarized
+	}
+	return summary
 }
 
 func format(f *core.ResponseFormat) (*wireFormat, error) {

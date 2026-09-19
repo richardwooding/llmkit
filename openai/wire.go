@@ -18,6 +18,10 @@ const (
 	statusIncomplete = "incomplete"
 
 	includeEncryptedReasoning = "reasoning.encrypted_content"
+	// summaryAuto is reasoning.summary's "return a summary" value; Anthropic's
+	// thinking.display "summarized" maps onto it.
+	summaryAuto       = "auto"
+	displaySummarized = "summarized"
 
 	eventOutputItemAdded      = "response.output_item.added"
 	eventOutputItemDone       = "response.output_item.done"
@@ -97,7 +101,8 @@ type wireFormat struct {
 }
 
 type wireReasoning struct {
-	Effort string `json:"effort,omitempty"`
+	Effort  string `json:"effort,omitempty"`
+	Summary string `json:"summary,omitempty"`
 }
 
 type wireResponse struct {

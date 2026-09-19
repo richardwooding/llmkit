@@ -152,7 +152,7 @@ func TestChatRequestMapping(t *testing.T) {
 		Seed:            new(int64(7)),
 		Stop:            []string{"x"},
 		Format:          &core.ResponseFormat{Type: core.FormatJSONSchema, Name: "s", Schema: json.RawMessage(`{"type":"object"}`), Strict: true},
-		Reasoning:       &core.ReasoningConfig{Effort: "high"},
+		Reasoning:       &core.ReasoningConfig{Effort: "high", Summary: "summarized"},
 		Cache:           &core.CacheConfig{System: true, Tools: true, Turns: 2},
 		Extra:           map[string]any{"store": false},
 		ProviderOptions: map[string]map[string]any{"openai": {"previous_response_id": "resp_0"}, "other": {"z": 1}},
@@ -179,7 +179,8 @@ func TestChatRequestMapping(t *testing.T) {
 	if raw, _ := json.Marshal(b); strings.Contains(string(raw), "cache_control") {
 		t.Fatalf("cache_control leaked into body: %s", raw)
 	}
-	if obj(t, b["reasoning"])["effort"] != "high" || !reflect.DeepEqual(b["include"], []any{"reasoning.encrypted_content"}) {
+	// Anthropic's "summarized" is translated to reasoning.summary "auto".
+	if !reflect.DeepEqual(b["reasoning"], map[string]any{"effort": "high", "summary": "auto"}) || !reflect.DeepEqual(b["include"], []any{"reasoning.encrypted_content"}) {
 		t.Fatalf("reasoning = %v include = %v", b["reasoning"], b["include"])
 	}
 	format := obj(t, obj(t, b["text"])["format"])

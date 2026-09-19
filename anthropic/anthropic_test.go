@@ -373,6 +373,16 @@ func TestReasoningAndFormat(t *testing.T) {
 		t.Fatalf("empty reasoning = %v", cap.body["thinking"])
 	}
 
+	send(&core.Request{Reasoning: &core.ReasoningConfig{Summary: "omitted"}})
+	if !reflect.DeepEqual(cap.body["thinking"], map[string]any{"type": "adaptive", "display": "omitted"}) {
+		t.Fatalf("display = %v", cap.body["thinking"])
+	}
+	// OpenAI's vocabulary is translated so one ReasoningConfig works on both.
+	send(&core.Request{Reasoning: &core.ReasoningConfig{Summary: "auto", BudgetTokens: 1024}})
+	if !reflect.DeepEqual(cap.body["thinking"], map[string]any{"type": "enabled", "budget_tokens": float64(1024), "display": "summarized"}) {
+		t.Fatalf("display auto = %v", cap.body["thinking"])
+	}
+
 	schema := json.RawMessage(`{"type":"object","properties":{"n":{"type":"integer"}},"required":["n"],"additionalProperties":false}`)
 	send(&core.Request{Format: &core.ResponseFormat{Type: core.FormatJSONSchema, Schema: schema}})
 	format := obj(obj(cap.body["output_config"])["format"])

@@ -29,6 +29,11 @@ const (
 	thinkingAdaptive = "adaptive"
 	formatJSONSchema = "json_schema"
 
+	// displaySummarized is thinking.display's "return a readable summary"
+	// value; OpenAI's reasoning.summary "auto" maps onto it.
+	displaySummarized = "summarized"
+	summaryAuto       = "auto"
+
 	choiceAuto = "auto"
 	choiceAny  = "any"
 	choiceTool = "tool"
@@ -121,6 +126,7 @@ type wireToolChoice struct {
 type wireThinking struct {
 	Type         string `json:"type"`
 	BudgetTokens int    `json:"budget_tokens,omitempty"`
+	Display      string `json:"display,omitempty"`
 }
 
 type wireOutputConfig struct {

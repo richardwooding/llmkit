@@ -33,11 +33,20 @@ func (c *Client) body(req *core.Request, stream bool) ([]byte, error) {
 	}
 	if req.Reasoning != nil {
 		w.Include = []string{includeEncryptedReasoning}
-		if req.Reasoning.Effort != "" {
-			w.Reasoning = &wireReasoning{Effort: req.Reasoning.Effort}
-		}
+		w.Reasoning = reasoning(req.Reasoning)
 	}
 	return httpx.MarshalWithExtra(w, req.ProviderExtra(ID))
+}
+
+func reasoning(cfg *core.ReasoningConfig) *wireReasoning {
+	summary := cfg.Summary
+	if summary == displaySummarized {
+		summary = summaryAuto
+	}
+	if cfg.Effort == "" && summary == "" {
+		return nil
+	}
+	return &wireReasoning{Effort: cfg.Effort, Summary: summary}
 }
 
 func tools(ts []core.Tool) []wireTool {
